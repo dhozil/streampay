@@ -1,0 +1,1878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StreamPay — Money Flows Every Second</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/6.9.0/ethers.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@300;400;500;600;700&family=Exo+2:ital,wght@0,100;0,200;0,300;0,400;0,600;0,700;0,800;0,900;1,200;1,700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --space:#04020f;
+  --space2:#070514;
+  --space3:#0c0920;
+  --space4:#11102e;
+  --space5:#17163e;
+  --mag:#14d286;
+  --mag2:#24bb72;
+  --mag3:#25d49a;
+  --mag-glow:rgba(224,64,251,0.2);
+  --mag-glow2:rgba(224,64,251,0.08);
+  --acid:#00ff88;
+  --acid2:#00cc6a;
+  --acid3:#008844;
+  --acid-glow:rgba(0,255,136,0.18);
+  --acid-glow2:rgba(0,255,136,0.06);
+  --blue:#00c8ff;
+  --blue2:#0099cc;
+  --blue-glow:rgba(0,200,255,0.15);
+  --red:#ff2d55;
+  --red-glow:rgba(255,45,85,0.15);
+  --ink:#dde8ff;
+  --ink2:#8899cc;
+  --ink3:#445588;
+  --ink4:#2a3360;
+  --border:rgba(224,64,251,0.15);
+  --border2:rgba(224,64,251,0.3);
+  --card:rgba(7,5,20,0.9);
+}
+
+html{scroll-behavior:smooth}
+body{
+  background:var(--space);
+  color:var(--ink);
+  font-family:'Exo 2',sans-serif;
+  font-size:15px;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ANIMATED MESH BACKGROUND */
+.mesh-bg{
+  position:fixed;inset:0;z-index:0;
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 20%, rgba(224,64,251,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 80%, rgba(0,200,255,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(0,255,136,0.03) 0%, transparent 60%),
+    var(--space);
+  pointer-events:none;
+  animation:meshshift 20s ease-in-out infinite alternate;
+}
+@keyframes meshshift{
+  0%{background-position:0% 0%, 100% 100%, 50% 50%}
+  100%{background-position:10% 15%, 90% 85%, 55% 45%}
+}
+
+/* GRID */
+.grid-lines{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(224,64,251,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(224,64,251,0.04) 1px, transparent 1px);
+  background-size:50px 50px;
+}
+
+/* SCAN LINE */
+.scanline{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(
+    0deg, transparent, transparent 3px,
+    rgba(0,0,0,0.07) 3px, rgba(0,0,0,0.07) 4px
+  );
+}
+
+/* ═══ NAV ═══ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:62px;padding:0 36px;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(4,2,15,0.85);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+nav::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--mag),var(--blue),transparent);
+  opacity:.5;
+}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-logo{
+  font-family:'Rajdhani',sans-serif;
+  font-size:26px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  background:linear-gradient(135deg,var(--mag),var(--blue));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0 0 12px rgba(224,64,251,0.5));
+}
+.brand-ver{
+  font-family:'Share Tech Mono',monospace;
+  font-size:9px;letter-spacing:.18em;color:var(--ink3);
+  background:var(--space3);border:1px solid var(--border);
+  padding:3px 9px;border-radius:2px;
+}
+.nav-r{display:flex;align-items:center;gap:10px}
+.net-status{
+  display:flex;align-items:center;gap:7px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.06em;
+  color:var(--ink3);background:var(--space3);
+  border:1px solid var(--border);padding:5px 12px;border-radius:3px;
+}
+.ndot{width:6px;height:6px;border-radius:50%;background:var(--ink4)}
+.ndot.live{
+  background:var(--acid);
+  box-shadow:0 0 8px var(--acid),0 0 16px var(--acid-glow);
+  animation:blink 2s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.4}}
+.wallet-btn{
+  font-family:'Rajdhani',sans-serif;font-weight:700;
+  font-size:13px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--space);
+  background:linear-gradient(135deg,var(--mag),var(--mag2));
+  border:none;padding:9px 22px;border-radius:3px;cursor:pointer;
+  box-shadow:0 0 20px var(--mag-glow);
+  transition:all .2s;clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+}
+.wallet-btn:hover{
+  box-shadow:0 0 40px var(--mag-glow);
+  transform:translateY(-1px);
+}
+
+/* ═══ HERO ═══ */
+.hero{
+  min-height:100vh;position:relative;z-index:1;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:80px 36px 60px;overflow:hidden;
+}
+
+/* LARGE ROTATING RING */
+.hero-ring{
+  position:absolute;right:-15vw;top:50%;transform:translateY(-50%);
+  width:70vw;height:70vw;max-width:900px;max-height:900px;
+  border-radius:50%;
+  border:1px solid rgba(224,64,251,0.08);
+  pointer-events:none;
+}
+.hero-ring::before{
+  content:'';position:absolute;inset:-30px;border-radius:50%;
+  border:1px solid rgba(0,200,255,0.06);
+}
+.hero-ring::after{
+  content:'';position:absolute;inset:60px;border-radius:50%;
+  border:1px solid rgba(0,255,136,0.05);
+  animation:rotate 30s linear infinite;
+}
+@keyframes rotate{to{transform:rotate(360deg)}}
+
+/* FLOATING PARTICLES */
+.particles{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.particle{
+  position:absolute;border-radius:50%;
+  background:var(--mag);opacity:.6;
+  animation:float linear infinite;
+}
+@keyframes float{
+  0%{transform:translateY(100vh) scale(0);opacity:0}
+  10%{opacity:.6}
+  90%{opacity:.6}
+  100%{transform:translateY(-10vh) scale(1);opacity:0}
+}
+
+.hero-inner{position:relative;z-index:2;max-width:900px}
+
+.hero-eyebrow{
+  display:flex;align-items:center;gap:12px;
+  font-family:'Share Tech Mono',monospace;
+  font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--mag);
+  margin-bottom:28px;
+  animation:fadein .8s ease both;
+}
+.eyebrow-line{width:40px;height:1px;background:linear-gradient(90deg,var(--mag),transparent)}
+@keyframes fadein{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.hero-h1{
+  font-family:'Rajdhani',sans-serif;
+  font-size:clamp(64px,10vw,148px);
+  font-weight:700;
+  line-height:.9;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+  margin-bottom:30px;
+  animation:fadein .8s .1s ease both;
+}
+.h1-l1{
+  display:block;color:var(--ink);
+  text-shadow:0 0 60px rgba(221,232,255,0.1);
+}
+.h1-l2{
+  display:block;
+  background:linear-gradient(90deg,var(--mag),var(--blue),var(--acid));
+  background-size:200%;
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  animation:gradshift 4s ease-in-out infinite alternate,fadein .8s .2s ease both;
+  filter:drop-shadow(0 0 30px rgba(224,64,251,0.3));
+}
+@keyframes gradshift{0%{background-position:0%}100%{background-position:100%}}
+.h1-l3{
+  display:block;
+  color:transparent;
+  -webkit-text-stroke:1.5px rgba(221,232,255,0.2);
+  animation:fadein .8s .3s ease both;
+}
+
+.hero-desc{
+  font-size:17px;font-weight:300;
+  color:var(--ink2);line-height:1.75;
+  max-width:560px;margin-bottom:44px;
+  animation:fadein .8s .4s ease both;
+}
+.hero-desc strong{color:var(--ink);font-weight:600}
+
+/* HERO DATA PILLS */
+.hero-pills{
+  display:flex;gap:10px;flex-wrap:wrap;
+  margin-bottom:48px;
+  animation:fadein .8s .5s ease both;
+}
+.hpill{
+  display:flex;align-items:center;gap:8px;
+  background:var(--space3);
+  border:1px solid var(--border);
+  padding:10px 18px;border-radius:3px;
+  position:relative;overflow:hidden;
+  clip-path:polygon(6px 0%,100% 0%,calc(100% - 6px) 100%,0% 100%);
+}
+.hpill::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--mag),transparent);
+  opacity:.4;
+}
+.hpill-val{
+  font-family:'Rajdhani',sans-serif;
+  font-size:20px;font-weight:700;letter-spacing:.04em;
+  color:var(--mag);text-shadow:0 0 15px var(--mag-glow);
+}
+.hpill-lbl{
+  font-family:'Share Tech Mono',monospace;
+  font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);
+}
+
+/* HERO CTA */
+.hero-btns{
+  display:flex;gap:14px;flex-wrap:wrap;
+  animation:fadein .8s .6s ease both;
+}
+.hbtn{
+  font-family:'Rajdhani',sans-serif;font-weight:700;
+  font-size:14px;letter-spacing:.12em;text-transform:uppercase;
+  padding:14px 38px;border-radius:3px;cursor:pointer;
+  transition:all .2s;border:none;
+  clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);
+}
+.hbtn-primary{
+  color:var(--space);
+  background:linear-gradient(135deg,var(--mag),var(--blue));
+  box-shadow:0 0 30px var(--mag-glow),0 4px 30px rgba(0,200,255,0.2);
+}
+.hbtn-primary:hover{
+  box-shadow:0 0 60px var(--mag-glow),0 8px 40px rgba(0,200,255,0.3);
+  transform:translateY(-2px);
+}
+.hbtn-sec{
+  color:var(--mag);background:transparent;
+  border:1.5px solid var(--border2);
+  clip-path:none;border-radius:3px;
+}
+.hbtn-sec:hover{background:var(--mag-glow2);border-color:var(--mag)}
+
+/* TICKER */
+.ticker{
+  position:relative;z-index:1;
+  background:var(--space2);
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  height:42px;display:flex;align-items:center;overflow:hidden;
+}
+.ticker::before{
+  content:'';position:absolute;top:0;left:0;bottom:0;width:100%;
+  background:linear-gradient(90deg,var(--space2) 0%,transparent 8%,transparent 92%,var(--space2) 100%);
+  z-index:2;pointer-events:none;
+}
+.ticker-label{
+  position:absolute;left:0;top:0;bottom:0;z-index:3;
+  display:flex;align-items:center;padding:0 18px;
+  background:linear-gradient(135deg,var(--mag2),var(--blue2));
+  font-family:'Rajdhani',monospace;font-size:12px;letter-spacing:.14em;font-weight:700;
+  color:#fff;white-space:nowrap;
+}
+.ticker-inner{
+  display:flex;white-space:nowrap;
+  animation:scroll 22s linear infinite;
+  padding-left:170px;
+}
+.ticker-inner:hover{animation-play-state:paused}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.titem{
+  font-family:'Share Tech Mono',monospace;font-size:11px;
+  color:var(--ink3);padding:0 36px;letter-spacing:.06em;
+  display:flex;align-items:center;gap:10px;
+}
+.titem::before{content:'◈';color:var(--mag3);font-size:8px}
+
+/* ═══ APP ═══ */
+#app{display:none;padding-top:62px;position:relative;z-index:1}
+.app-inner{max-width:1200px;margin:0 auto;padding:36px 36px}
+
+/* STATS */
+.statbar{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:2px;margin-bottom:28px;
+  background:var(--border);
+  border:1px solid var(--border);
+  border-radius:6px;overflow:hidden;
+}
+.sbi{
+  background:var(--space3);
+  padding:20px 22px;position:relative;overflow:hidden;
+  cursor:default;transition:background .2s;
+}
+.sbi:hover{background:var(--space4)}
+.sbi::after{
+  content:'';position:absolute;bottom:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--mag),var(--blue),transparent);
+  opacity:.4;
+}
+.sbi-val{
+  font-family:'Rajdhani',sans-serif;font-size:30px;font-weight:700;letter-spacing:.04em;
+  color:var(--mag);text-shadow:0 0 20px var(--mag-glow);
+  line-height:1;margin-bottom:4px;
+}
+.sbi-lbl{
+  font-family:'Share Tech Mono',monospace;
+  font-size:9px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--ink3);
+}
+
+/* TABS */
+.tabs{
+  display:flex;gap:0;
+  border-bottom:1px solid var(--border);
+  margin-bottom:28px;
+}
+.tab{
+  font-family:'Rajdhani',sans-serif;font-weight:600;
+  font-size:13px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink3);background:none;border:none;
+  border-bottom:2px solid transparent;
+  padding:10px 24px;margin-bottom:-1px;cursor:pointer;
+  transition:all .15s;border-radius:0;
+}
+.tab.active{
+  color:var(--mag);border-bottom-color:var(--mag);
+  text-shadow:0 0 12px var(--mag-glow);
+}
+.tab:hover:not(.active){color:var(--ink2)}
+
+.pnl{display:none}.pnl.active{display:block}
+.grid2{display:grid;grid-template-columns:390px 1fr;gap:22px;align-items:start}
+
+/* ═══ CARD ═══ */
+.card{
+  background:rgba(7,5,20,0.95);
+  border:1px solid var(--border);
+  border-radius:6px;padding:26px;margin-bottom:18px;
+  position:relative;overflow:hidden;
+  backdrop-filter:blur(10px);
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--mag),var(--blue),transparent);
+  opacity:.5;
+}
+.card-h{
+  font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);margin-bottom:4px;
+}
+.card-sub{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.14em;color:var(--ink3);margin-bottom:22px;
+}
+
+/* FORM */
+.fg{margin-bottom:15px}
+.fl{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.14em;text-transform:uppercase;
+  color:var(--mag2);margin-bottom:6px;display:block;
+  text-shadow:0 0 10px var(--mag-glow2);
+}
+.fi{
+  width:100%;
+  background:var(--space2);
+  border:1px solid rgba(224,64,251,0.2);
+  border-radius:3px;
+  padding:10px 14px;
+  color:var(--ink);
+  font-family:'Exo 2',sans-serif;font-size:14px;
+  outline:none;transition:all .2s;
+}
+.fi:focus{
+  border-color:var(--mag);
+  box-shadow:0 0 0 3px var(--mag-glow2),inset 0 0 20px rgba(224,64,251,0.03);
+}
+.fi::placeholder{color:var(--ink4)}
+select.fi{
+  appearance:none;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23445588'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;
+}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fhint{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--ink4);margin-top:5px;letter-spacing:.04em}
+
+.bal-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--space2);border:1px solid var(--border);
+  border-radius:3px;padding:10px 14px;margin-bottom:14px;
+}
+.bal-v{font-family:'Rajdhani',monospace;font-size:16px;font-weight:600;color:var(--acid);text-shadow:0 0 10px var(--acid-glow)}
+.bal-l{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--ink3)}
+
+.allow-row{
+  display:flex;align-items:center;justify-content:space-between;
+  background:var(--space2);border:1px solid var(--border);
+  border-radius:3px;padding:10px 14px;margin-bottom:14px;font-size:13px;
+}
+.aok{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--acid);text-shadow:0 0 8px var(--acid-glow)}
+.apend{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--mag)}
+
+/* RATE PREVIEW */
+.rate-box{
+  background:var(--space2);
+  border:1px solid rgba(0,200,255,0.25);
+  border-left:3px solid var(--blue);
+  border-radius:0 3px 3px 0;
+  padding:14px 16px;margin-bottom:18px;display:none;
+  position:relative;overflow:hidden;
+}
+.rate-box::after{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at left,rgba(0,200,255,0.05),transparent 60%);
+}
+.rate-box-l{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue2);margin-bottom:6px}
+.rate-box-v{
+  font-family:'Rajdhani',sans-serif;font-size:24px;font-weight:700;letter-spacing:.04em;
+  color:var(--blue);text-shadow:0 0 15px var(--blue-glow);
+  position:relative;z-index:1;
+}
+
+/* BUTTONS */
+.btn-mag{
+  width:100%;
+  font-family:'Rajdhani',sans-serif;font-weight:700;
+  font-size:13px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--space);
+  background:linear-gradient(135deg,var(--mag),var(--mag2));
+  border:none;border-radius:3px;padding:14px 20px;cursor:pointer;
+  box-shadow:0 0 25px var(--mag-glow);
+  transition:all .2s;position:relative;overflow:hidden;
+  clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%);
+}
+.btn-mag::after{
+  content:'';position:absolute;top:0;left:-100%;width:50%;height:100%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.25),transparent);
+  transition:left .4s;
+}
+.btn-mag:hover{box-shadow:0 0 45px var(--mag-glow);transform:translateY(-1px)}
+.btn-mag:hover::after{left:150%}
+.btn-mag.outline{
+  background:transparent;color:var(--mag);
+  box-shadow:none;border:1.5px solid var(--border2);
+  clip-path:none;
+}
+.btn-mag.outline:hover{background:var(--mag-glow2);border-color:var(--mag);transform:none;box-shadow:none}
+.btn-acid{
+  font-family:'Rajdhani',sans-serif;font-weight:700;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  background:transparent;color:var(--acid);
+  border:1.5px solid rgba(0,255,136,.3);border-radius:3px;
+  padding:8px 18px;cursor:pointer;transition:all .2s;
+}
+.btn-acid:hover{background:var(--acid-glow2);border-color:var(--acid)}
+.btn-red{
+  font-family:'Rajdhani',sans-serif;font-weight:700;
+  font-size:12px;letter-spacing:.1em;text-transform:uppercase;
+  background:transparent;color:var(--red);
+  border:1.5px solid rgba(255,45,85,.3);border-radius:3px;
+  padding:8px 18px;cursor:pointer;transition:all .2s;
+}
+.btn-red:hover{background:var(--red-glow);border-color:var(--red)}
+.btn-ghost{
+  font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.08em;
+  color:var(--ink3);background:var(--space3);
+  border:1px solid var(--border);border-radius:3px;
+  padding:7px 14px;cursor:pointer;transition:all .15s;
+}
+.btn-ghost:hover{color:var(--mag);border-color:var(--border2)}
+button:disabled{opacity:.35;cursor:not-allowed}
+
+/* HOW STEPS */
+.steps{display:flex;flex-direction:column}
+.step{display:flex;gap:18px;padding:18px 0;border-bottom:1px solid var(--border)}
+.step:last-child{border:none;padding-bottom:0}
+.step-n{
+  font-family:'Rajdhani',sans-serif;font-size:36px;font-weight:700;
+  background:linear-gradient(180deg,var(--mag),var(--blue));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  line-height:1;flex-shrink:0;width:38px;
+  filter:drop-shadow(0 0 8px rgba(224,64,251,0.4));
+}
+.step-t{font-size:14px;font-weight:700;color:var(--ink);margin-bottom:4px;letter-spacing:.02em}
+.step-d{font-size:13px;color:var(--ink2);line-height:1.6;font-weight:300}
+
+/* TECH SPECS */
+.specs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.spec{
+  background:var(--space3);border:1px solid var(--border);
+  border-radius:4px;padding:12px 14px;
+}
+.spec-l{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.12em;text-transform:uppercase;
+  color:var(--mag3);margin-bottom:5px;
+}
+.spec-v{
+  font-family:'Share Tech Mono',monospace;font-size:12px;
+  color:var(--ink);word-break:break-all;
+}
+.spec-v a{color:var(--blue);text-decoration:none}
+.spec-v a:hover{text-decoration:underline}
+
+/* ═══ STREAM CARD ═══ */
+.stream-card{
+  background:rgba(7,5,20,0.95);
+  border:1px solid var(--border);border-radius:6px;
+  padding:22px;margin-bottom:14px;
+  position:relative;overflow:hidden;
+  transition:border-color .2s;
+  backdrop-filter:blur(8px);
+}
+.stream-card.active{border-color:rgba(224,64,251,0.25)}
+.stream-card.active:hover{border-color:rgba(224,64,251,0.45)}
+/* flowing plasma line */
+.stream-card.active::before{
+  content:'';position:absolute;top:0;width:30%;height:1px;
+  background:linear-gradient(90deg,transparent,var(--mag),var(--blue),transparent);
+  animation:plasma 3.5s ease-in-out infinite;
+}
+@keyframes plasma{
+  0%{left:-30%;opacity:0}
+  15%{opacity:1}
+  85%{opacity:1}
+  100%{left:130%;opacity:0}
+}
+
+.sc-top{display:flex;justify-content:space-between;gap:14px;margin-bottom:18px}
+.sc-id{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.1em;color:var(--ink3);margin-bottom:5px;
+}
+.sc-name{font-size:16px;font-weight:700;color:var(--ink);margin-bottom:4px;letter-spacing:.02em}
+.sc-peer{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--ink3)}
+.sc-right{text-align:right;flex-shrink:0}
+.sc-amt{
+  font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;
+  letter-spacing:.04em;color:var(--ink);line-height:1;
+}
+.sc-amt-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.1em;color:var(--ink3);margin-bottom:5px;
+}
+.badge{
+  display:inline-block;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  font-weight:600;letter-spacing:.12em;text-transform:uppercase;
+  padding:3px 10px;border-radius:2px;margin-top:4px;
+}
+.badge.active{
+  background:rgba(224,64,251,0.12);color:var(--mag);
+  border:1px solid rgba(224,64,251,0.25);
+  text-shadow:0 0 10px var(--mag-glow);
+}
+.badge.cancelled{
+  background:var(--space3);color:var(--ink3);border:1px solid var(--border);
+}
+.badge.completed{
+  background:var(--acid-glow2);color:var(--acid);
+  border:1px solid rgba(0,255,136,0.2);
+}
+
+/* LIVE COUNTER */
+.live{
+  background:var(--space2);
+  border:1px solid rgba(0,255,136,0.15);
+  border-radius:6px;padding:20px;margin-bottom:16px;
+  text-align:center;position:relative;overflow:hidden;
+}
+.live::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse 70% 70% at 50% 50%,rgba(0,255,136,0.04),transparent);
+}
+.live-tag{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.2em;text-transform:uppercase;
+  color:var(--acid2);margin-bottom:10px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.lpulse{
+  width:5px;height:5px;border-radius:50%;
+  background:var(--acid);box-shadow:0 0 8px var(--acid);
+  animation:lp 1.4s ease-in-out infinite;
+}
+@keyframes lp{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.2;transform:scale(.4)}}
+.live-num{
+  font-family:'Rajdhani',sans-serif;
+  font-size:56px;font-weight:700;letter-spacing:.02em;
+  color:var(--acid);
+  text-shadow:0 0 40px var(--acid-glow),0 0 80px var(--acid-glow2);
+  line-height:1;position:relative;z-index:1;
+}
+.live-unit{font-size:20px;color:var(--acid3);font-weight:400}
+.live-sub{
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--ink3);margin-top:8px;position:relative;z-index:1;
+}
+
+/* PROGRESS */
+.prog{margin-bottom:16px}
+.prog-labels{
+  display:flex;justify-content:space-between;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:var(--ink4);margin-bottom:6px;letter-spacing:.04em;
+}
+.prog-track{
+  height:3px;background:var(--space3);border-radius:2px;overflow:visible;
+  position:relative;
+}
+.prog-fill{
+  height:100%;border-radius:2px;
+  background:linear-gradient(90deg,var(--mag2),var(--mag),var(--blue));
+  box-shadow:0 0 10px var(--mag-glow);
+  transition:width .3s linear;position:relative;
+}
+.prog-fill::after{
+  content:'';position:absolute;right:0;top:50%;
+  transform:translate(50%,-50%);
+  width:9px;height:9px;border-radius:50%;
+  background:var(--mag);
+  box-shadow:0 0 12px var(--mag),0 0 24px var(--mag-glow);
+}
+
+.sc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;align-items:center}
+.topup-row{display:flex;gap:8px;margin-top:10px;width:100%}
+.topup-row .fi{flex:1;font-family:'Share Tech Mono',monospace;font-size:12px}
+.expl{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--ink3);text-decoration:none;letter-spacing:.06em;transition:color .15s}
+.expl:hover{color:var(--blue)}
+
+.sec-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.sec-title{
+  font-family:'Rajdhani',sans-serif;font-size:26px;
+  font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ink);
+}
+.sec-actions{display:flex;gap:8px;align-items:center}
+
+/* DASHBOARD */
+.dash-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+.dash-card{
+  background:rgba(7,5,20,0.95);
+  border:1px solid var(--border);border-radius:6px;
+  padding:20px 22px;position:relative;overflow:hidden;
+}
+.dash-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--blue),transparent);opacity:.5;
+}
+.dc-icon{font-size:22px;margin-bottom:10px}
+.dc-val{
+  font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;
+  letter-spacing:.04em;color:var(--acid);
+  text-shadow:0 0 15px var(--acid-glow);line-height:1;margin-bottom:4px;
+}
+.dc-lbl{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3)}
+
+.dash-chart-wrap{
+  background:rgba(7,5,20,0.95);border:1px solid var(--border);
+  border-radius:6px;padding:22px;margin-bottom:22px;
+}
+.dch-title{
+  font-family:'Rajdhani',sans-serif;font-size:16px;font-weight:700;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);
+  margin-bottom:16px;display:flex;align-items:center;gap:8px;
+}
+.dch-title::before{content:'▸';color:var(--mag);font-size:10px}
+.mini-bar-row{
+  display:flex;align-items:center;gap:12px;margin-bottom:10px;
+}
+.mini-bar-lbl{
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--ink3);width:80px;flex-shrink:0;letter-spacing:.04em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.mini-bar-track{
+  flex:1;height:6px;background:var(--space3);border-radius:3px;overflow:hidden;
+}
+.mini-bar-fill{
+  height:100%;border-radius:3px;
+  background:linear-gradient(90deg,var(--mag2),var(--blue));
+  box-shadow:0 0 6px var(--mag-glow);
+  transition:width .6s ease;
+}
+.mini-bar-val{
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--acid);width:72px;text-align:right;flex-shrink:0;
+}
+
+/* ═══ HOW IT WORKS SECTION ═══ */
+.how-section{
+  position:relative;z-index:1;
+  padding:80px 36px 80px;
+  border-top:1px solid var(--border);
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,var(--space2) 0%,var(--space) 100%);
+}
+.how-inner{max-width:980px;margin:0 auto}
+.how-header{text-align:center;margin-bottom:52px}
+.how-eyebrow{
+  font-family:'Share Tech Mono',monospace;
+  font-size:10px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--mag);margin-bottom:14px;
+}
+.how-title{
+  font-family:'Rajdhani',sans-serif;
+  font-size:clamp(36px,5vw,58px);
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;
+  color:var(--ink);line-height:1;margin-bottom:12px;
+}
+.how-desc{
+  font-size:15px;color:var(--ink3);
+  font-family:'Share Tech Mono',monospace;letter-spacing:.04em;
+}
+
+.how-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:14px;
+}
+.how-card{
+  background:rgba(7,5,20,0.9);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:24px;
+  cursor:pointer;
+  transition:border-color .2s,box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.how-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--mag),var(--blue),transparent);
+  opacity:0;transition:opacity .2s;
+}
+.how-card:hover{border-color:rgba(224,64,251,0.3)}
+.how-card:hover::before{opacity:.5}
+.how-card.open{
+  border-color:rgba(224,64,251,0.35);
+  box-shadow:0 0 24px rgba(224,64,251,0.05);
+}
+.how-card.open::before{opacity:.6}
+
+.how-card-top{display:flex;align-items:flex-start;gap:16px}
+.how-card-num{
+  font-family:'Rajdhani',sans-serif;
+  font-size:40px;font-weight:700;letter-spacing:.04em;
+  background:linear-gradient(180deg,var(--mag),var(--blue));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0 0 8px rgba(224,64,251,0.3));
+  line-height:1;flex-shrink:0;
+}
+.how-card-body{flex:1}
+.how-card-title{
+  font-size:16px;font-weight:700;
+  color:var(--ink);letter-spacing:.02em;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:8px;
+}
+.how-arrow{
+  font-size:11px;color:var(--mag);
+  transition:transform .25s;opacity:.5;flex-shrink:0;
+}
+.how-card.open .how-arrow{transform:rotate(90deg);opacity:1}
+
+.how-card-detail{
+  max-height:0;overflow:hidden;
+  opacity:0;
+  transition:max-height .35s ease,opacity .3s ease,margin-top .3s ease;
+  font-size:14px;color:var(--ink2);line-height:1.7;font-weight:300;
+  margin-top:0;
+}
+.how-card.open .how-card-detail{
+  max-height:150px;opacity:1;margin-top:16px;
+}
+.how-card-tag{
+  display:inline-block;margin-top:12px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.1em;color:var(--mag3);
+  background:var(--mag-glow2);
+  border:1px solid var(--border);
+  padding:3px 10px;border-radius:2px;
+}
+
+/* ACCORDION STEPS (in-app) */
+.step-acc{cursor:pointer;transition:background .15s;border-radius:4px;padding:4px 0}
+.step-acc:hover{background:rgba(224,64,251,0.04)}
+.step-t{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.step-arrow{
+  font-size:10px;color:var(--mag);transition:transform .25s;flex-shrink:0;
+  opacity:.6;
+}
+.step-acc.open .step-arrow{transform:rotate(90deg);opacity:1}
+.step-body{
+  max-height:0;overflow:hidden;
+  transition:max-height .3s ease,margin-top .3s ease,opacity .3s ease;
+  opacity:0;margin-top:0;
+  font-size:13px;color:var(--ink2);line-height:1.65;font-weight:300;
+}
+.step-acc.open .step-body{max-height:200px;opacity:1;margin-top:10px}
+.step-tag{
+  display:inline-block;margin-top:10px;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  letter-spacing:.1em;color:var(--mag3);
+  background:var(--mag-glow2);
+  border:1px solid var(--border);
+  padding:3px 10px;border-radius:2px;
+}
+.hfbtn{
+  font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.08em;
+  color:var(--ink3);background:var(--space3);
+  border:1px solid var(--border);border-radius:3px;
+  padding:6px 14px;cursor:pointer;transition:all .15s;
+}
+.hfbtn.active{color:var(--mag);border-color:var(--border2);text-shadow:0 0 8px var(--mag-glow)}
+.hfbtn:hover:not(.active){color:var(--ink2)}
+
+.hist-card{
+  background:rgba(7,5,20,0.9);border:1px solid var(--border);
+  border-radius:6px;padding:16px 20px;margin-bottom:10px;
+  display:flex;align-items:center;gap:16px;
+  transition:border-color .15s;
+}
+.hist-card:hover{border-color:rgba(224,64,251,0.25)}
+.hist-icon{font-size:18px;flex-shrink:0;opacity:.7}
+.hist-main{flex:1;min-width:0}
+.hist-name{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.hist-meta{
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--ink3);letter-spacing:.04em;
+}
+.hist-right{text-align:right;flex-shrink:0}
+.hist-amt{
+  font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;
+  color:var(--ink2);
+}
+.hist-date{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--ink4);margin-top:2px}
+
+/* CSV EXPORT */
+.btn-csv{
+  font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.1em;
+  color:var(--acid);background:var(--acid-glow2);
+  border:1.5px solid rgba(0,255,136,0.25);
+  border-radius:3px;padding:7px 16px;cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;gap:6px;
+}
+.btn-csv:hover{background:var(--acid-glow);border-color:var(--acid)}
+.btn-csv::before{content:'↓';font-size:12px}
+
+.empty{
+  text-align:center;padding:60px 20px;
+  border:1px dashed rgba(224,64,251,0.15);
+  border-radius:6px;background:var(--space3);
+}
+.ei{font-size:36px;margin-bottom:12px;opacity:.3}
+.et{font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--ink4);letter-spacing:.1em}
+
+/* TOAST */
+.tw{position:fixed;bottom:24px;right:24px;z-index:999;display:flex;flex-direction:column;gap:8px}
+.toast{
+  background:rgba(11,9,28,0.96);
+  border:1px solid var(--border);border-radius:6px;
+  padding:14px 18px;min-width:260px;max-width:360px;
+  backdrop-filter:blur(12px);
+  animation:tin .22s ease;
+}
+.toast.success{border-left:2px solid var(--acid)}
+.toast.error{border-left:2px solid var(--red)}
+.toast.info{border-left:2px solid var(--blue)}
+.t-t{font-size:13px;font-weight:700;margin-bottom:3px;font-family:'Rajdhani',sans-serif;letter-spacing:.06em;text-transform:uppercase}
+.toast.success .t-t{color:var(--acid)}
+.toast.error .t-t{color:var(--red)}
+.toast.info .t-t{color:var(--blue)}
+.t-b{font-size:12px;color:var(--ink2);line-height:1.45}
+@keyframes tin{from{transform:translateX(14px);opacity:0}to{transform:translateX(0);opacity:1}}
+.spin{display:inline-block;width:12px;height:12px;border:1.5px solid var(--border2);border-top-color:var(--mag);border-radius:50%;animation:sp .6s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media(max-width:760px){
+  nav{padding:0 18px}
+  .hero{padding:100px 18px 56px}
+  .app-inner{padding:24px 18px}
+  .grid2{grid-template-columns:1fr}
+  .statbar{grid-template-columns:1fr 1fr}
+  .specs{grid-template-columns:1fr}
+  .hero-h1{font-size:clamp(54px,14vw,90px)}
+  .hero-pills{gap:8px}
+}
+</style>
+</head>
+<body>
+
+<div class="mesh-bg"></div>
+<div class="grid-lines"></div>
+<div class="scanline"></div>
+
+<!-- PARTICLES -->
+<div class="particles" id="particles"></div>
+
+<!-- NAV -->
+<nav>
+  <div class="brand">
+    <div class="brand-logo">StreamPay</div>
+    <div class="brand-ver">v1.0 · Arc Testnet</div>
+  </div>
+  <div class="nav-r">
+    <div class="net-status">
+      <div class="ndot" id="ndot"></div>
+      <span id="nlabel">disconnected</span>
+    </div>
+    <button class="wallet-btn" id="connBtn" onclick="connect()">Connect Wallet</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero" id="gate">
+  <div class="hero-ring"></div>
+  <div class="hero-inner">
+    <div class="hero-eyebrow">
+      <div class="eyebrow-line"></div>
+      USDC · Arc Testnet · Real-time Settlement
+    </div>
+
+    <h1 class="hero-h1">
+      <span class="h1-l1">Money that</span>
+      <span class="h1-l2">FLOWS</span>
+      <span class="h1-l3">every second.</span>
+    </h1>
+
+    <p class="hero-desc">
+      Create a payment stream — <strong>USDC flows continuously</strong> from sender to recipient, earned per second on Arc. Withdraw anytime. Cancel for instant fair refund.
+    </p>
+
+    <div class="hero-pills">
+      <div class="hpill">
+        <div>
+          <div class="hpill-val">$0.01</div>
+          <div class="hpill-lbl">Gas per tx</div>
+        </div>
+      </div>
+      <div class="hpill">
+        <div>
+          <div class="hpill-val">&lt;1s</div>
+          <div class="hpill-lbl">Finality</div>
+        </div>
+      </div>
+      <div class="hpill">
+        <div>
+          <div class="hpill-val">USDC</div>
+          <div class="hpill-lbl">Stablecoin</div>
+        </div>
+      </div>
+      <div class="hpill">
+        <div>
+          <div class="hpill-val">1/sec</div>
+          <div class="hpill-lbl">Stream rate</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-btns">
+      <button class="hbtn hbtn-primary" onclick="connect()">Launch App →</button>
+      <button class="hbtn hbtn-sec" onclick="document.getElementById('how-it-works').scrollIntoView({behavior:'smooth'})">How It Works</button>
+    </div>
+  </div>
+</div>
+
+<!-- TICKER -->
+<div class="ticker">
+  <div class="ticker-label">LIVE FEED</div>
+  <div class="ticker-inner">
+    <div class="titem">USDC streams per second on Arc</div>
+    <div class="titem">Withdraw earned amount anytime</div>
+    <div class="titem">Cancel → instant fair split</div>
+    <div class="titem">Top up to extend duration</div>
+    <div class="titem">$0.01 gas · Arc Testnet</div>
+    <div class="titem">Sub-second deterministic finality</div>
+    <div class="titem">ERC-20 USDC · 6 decimal precision</div>
+    <div class="titem">Powered by Arc × Circle</div>
+    <div class="titem">USDC streams per second on Arc</div>
+    <div class="titem">Withdraw earned amount anytime</div>
+    <div class="titem">Cancel → instant fair split</div>
+    <div class="titem">Top up to extend duration</div>
+    <div class="titem">$0.01 gas · Arc Testnet</div>
+    <div class="titem">Sub-second deterministic finality</div>
+    <div class="titem">ERC-20 USDC · 6 decimal precision</div>
+    <div class="titem">Powered by Arc × Circle</div>
+  </div>
+</div>
+
+<!-- HOW IT WORKS — standalone, always visible -->
+<div class="how-section" id="how-it-works">
+  <div class="how-inner">
+    <div class="how-header">
+      <div class="how-eyebrow">Protocol</div>
+      <h2 class="how-title">How It Works</h2>
+      <p class="how-desc">Four onchain actions. Click each to explore.</p>
+    </div>
+
+    <div class="how-grid">
+      <div class="how-card" onclick="toggleHowCard(this)">
+        <div class="how-card-top">
+          <div class="how-card-num">01</div>
+          <div class="how-card-body">
+            <div class="how-card-title">Deposit USDC into stream <span class="how-arrow">▸</span></div>
+          </div>
+        </div>
+        <div class="how-card-detail">
+          Total USDC locked onchain the moment you create the stream. Flows continuously to recipient per second — no delay, no batch, no intermediary.
+          <div class="how-card-tag">createStream() · transferFrom()</div>
+        </div>
+      </div>
+
+      <div class="how-card" onclick="toggleHowCard(this)">
+        <div class="how-card-top">
+          <div class="how-card-num">02</div>
+          <div class="how-card-body">
+            <div class="how-card-title">Recipient earns every second <span class="how-arrow">▸</span></div>
+          </div>
+        </div>
+        <div class="how-card-detail">
+          Live balance updates 10x per second in the UI. Recipient can call withdraw() at any moment to claim all earned USDC. No minimum. No lock-up period.
+          <div class="how-card-tag">withdraw() · Sub-second finality on Arc</div>
+        </div>
+      </div>
+
+      <div class="how-card" onclick="toggleHowCard(this)">
+        <div class="how-card-top">
+          <div class="how-card-num">03</div>
+          <div class="how-card-body">
+            <div class="how-card-title">Cancel for instant fair split <span class="how-arrow">▸</span></div>
+          </div>
+        </div>
+        <div class="how-card-detail">
+          Sender cancels anytime. Contract calculates the exact second: recipient gets earned portion, sender gets unspent remainder — both in the same transaction.
+          <div class="how-card-tag">cancel() · Atomic split · Single tx</div>
+        </div>
+      </div>
+
+      <div class="how-card" onclick="toggleHowCard(this)">
+        <div class="how-card-top">
+          <div class="how-card-num">04</div>
+          <div class="how-card-body">
+            <div class="how-card-title">Top up to extend <span class="how-arrow">▸</span></div>
+          </div>
+        </div>
+        <div class="how-card-detail">
+          Add more USDC at any time. Stream duration extends proportionally at the same per-second rate — no new stream needed.
+          <div class="how-card-tag">topUp() · Extends stopTime proportionally</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="text-align:center;margin-top:48px">
+      <button class="hbtn hbtn-primary" onclick="connect()" style="font-size:14px;padding:13px 40px">
+        Launch App →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="app-inner">
+
+    <div class="statbar">
+      <div class="sbi"><div class="sbi-val" id="stBal">—</div><div class="sbi-lbl">Your USDC</div></div>
+      <div class="sbi"><div class="sbi-val" id="stTotal">—</div><div class="sbi-lbl">Total Streams</div></div>
+      <div class="sbi"><div class="sbi-val" id="stActive">—</div><div class="sbi-lbl">Active</div></div>
+      <div class="sbi"><div class="sbi-val" id="stVol">—</div><div class="sbi-lbl">USDC Streamed</div></div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('send')">Create Stream</button>
+      <button class="tab" onclick="switchTab('receiving')">Receiving</button>
+      <button class="tab" onclick="switchTab('sent')">Sent</button>
+      <button class="tab" onclick="switchTab('dashboard')">Dashboard</button>
+      <button class="tab" onclick="switchTab('history')">History</button>
+    </div>
+
+    <!-- SEND -->
+    <div class="pnl active" id="pnl-send">
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-h">New Stream</div>
+            <div class="card-sub">createStream() · USDC · Arc Testnet</div>
+
+            <div class="bal-row">
+              <span class="bal-l">Available</span>
+              <span class="bal-v" id="formBal">loading...</span>
+            </div>
+            <div class="allow-row">
+              <span>USDC Allowance</span>
+              <span id="allowSt" class="apend">checking...</span>
+            </div>
+            <div id="approveWrap" style="display:none;margin-bottom:16px">
+              <button class="btn-mag outline" onclick="approve()" id="approveBtn">Approve USDC Spending</button>
+            </div>
+
+            <div class="fg">
+              <label class="fl">recipient_address</label>
+              <input class="fi" id="fRecipient" placeholder="0x...">
+            </div>
+            <div class="frow">
+              <div class="fg">
+                <label class="fl">amount_usdc</label>
+                <input class="fi" type="number" id="fAmount" placeholder="10" min="1">
+                <div class="fhint">// min 1 USDC</div>
+              </div>
+              <div class="fg">
+                <label class="fl">duration</label>
+                <select class="fi" id="fDuration">
+                  <option value="3600">1 hour</option>
+                  <option value="86400" selected>1 day</option>
+                  <option value="604800">1 week</option>
+                  <option value="2592000">30 days</option>
+                  <option value="7776000">90 days</option>
+                  <option value="31536000">1 year</option>
+                </select>
+              </div>
+            </div>
+            <div class="fg">
+              <label class="fl">label_optional</label>
+              <input class="fi" id="fDesc" placeholder="// e.g. Monthly salary — Ahmad">
+            </div>
+
+            <div class="rate-box" id="rateBox">
+              <div class="rate-box-l">stream_rate</div>
+              <div class="rate-box-v" id="rateNum">—</div>
+            </div>
+
+            <button class="btn-mag" onclick="createStream()" id="createBtn">Create Stream →</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-h">How It Works</div>
+            <div class="card-sub">Click each step to expand · Instant settlement on Arc</div>
+            <div class="steps">
+              <div class="step step-acc" onclick="toggleStep(this)">
+                <div class="step-n">01</div>
+                <div style="flex:1">
+                  <div class="step-t">Deposit USDC into stream <span class="step-arrow">▸</span></div>
+                  <div class="step-d step-body">
+                    Total USDC locked onchain the moment you create the stream. Flows continuously to recipient per second — no delay, no batch. The contract holds funds until fully streamed or cancelled.
+                    <div class="step-tag">createStream() · transferFrom()</div>
+                  </div>
+                </div>
+              </div>
+              <div class="step step-acc" onclick="toggleStep(this)">
+                <div class="step-n">02</div>
+                <div style="flex:1">
+                  <div class="step-t">Recipient earns every second <span class="step-arrow">▸</span></div>
+                  <div class="step-d step-body">
+                    Balance updates in real-time — 10x per second in the UI. Recipient can call withdraw() at any moment to claim all earned USDC so far. No minimum, no lock-up.
+                    <div class="step-tag">withdraw() · Sub-second finality on Arc</div>
+                  </div>
+                </div>
+              </div>
+              <div class="step step-acc" onclick="toggleStep(this)">
+                <div class="step-n">03</div>
+                <div style="flex:1">
+                  <div class="step-t">Cancel for instant fair split <span class="step-arrow">▸</span></div>
+                  <div class="step-d step-body">
+                    Sender can cancel anytime. The contract calculates the exact second of cancellation: recipient gets their earned portion, sender gets the unspent remainder — both in the same transaction.
+                    <div class="step-tag">cancel() · Atomic split settlement</div>
+                  </div>
+                </div>
+              </div>
+              <div class="step step-acc" onclick="toggleStep(this)">
+                <div class="step-n">04</div>
+                <div style="flex:1">
+                  <div class="step-t">Top up to extend <span class="step-arrow">▸</span></div>
+                  <div class="step-d step-body">
+                    Running low? Add more USDC at any time. The stream duration extends proportionally at the same per-second rate — no need to create a new stream.
+                    <div class="step-tag">topUp() · Extends stopTime proportionally</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-h">Contracts</div>
+            <div class="card-sub">Arc Testnet · Chain ID 5042002</div>
+            <div class="specs">
+              <div class="spec">
+                <div class="spec-l">StreamPay</div>
+                <div class="spec-v" id="contractDisp"><span style="color:var(--mag)">deploy &amp; paste addr</span></div>
+              </div>
+              <div class="spec">
+                <div class="spec-l">USDC (6 dec)</div>
+                <div class="spec-v"><a href="https://testnet.arcscan.app/address/0x3600000000000000000000000000000000000000" target="_blank">0x3600...0000 ↗</a></div>
+              </div>
+              <div class="spec">
+                <div class="spec-l">RPC Endpoint</div>
+                <div class="spec-v" style="font-size:10px">rpc.testnet.arc.network</div>
+              </div>
+              <div class="spec">
+                <div class="spec-l">Faucet</div>
+                <div class="spec-v"><a href="https://faucet.circle.com" target="_blank">faucet.circle.com ↗</a></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECEIVING -->
+    <div class="pnl" id="pnl-receiving">
+      <div class="sec-hd">
+        <div class="sec-title">Receiving</div>
+        <div class="sec-actions">
+          <button class="btn-csv" onclick="exportCSV('receiving')">Export CSV</button>
+          <button class="btn-ghost" onclick="loadReceiving()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="recList"></div>
+    </div>
+
+    <!-- SENT -->
+    <div class="pnl" id="pnl-sent">
+      <div class="sec-hd">
+        <div class="sec-title">Sent</div>
+        <div class="sec-actions">
+          <button class="btn-csv" onclick="exportCSV('sent')">Export CSV</button>
+          <button class="btn-ghost" onclick="loadSent()">↻ Refresh</button>
+        </div>
+      </div>
+      <div id="sentList"></div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div class="pnl" id="pnl-dashboard">
+      <div class="sec-hd">
+        <div class="sec-title">Dashboard</div>
+        <button class="btn-ghost" onclick="loadDashboard()">↻ Refresh</button>
+      </div>
+
+      <div class="dash-grid">
+        <div class="dash-card">
+          <div class="dc-icon">📤</div>
+          <div class="dc-val" id="dTotalSent">—</div>
+          <div class="dc-lbl">Total Sent (USDC)</div>
+        </div>
+        <div class="dash-card">
+          <div class="dc-icon">📡</div>
+          <div class="dc-val" id="dTotalRec">—</div>
+          <div class="dc-lbl">Total Received (USDC)</div>
+        </div>
+        <div class="dash-card">
+          <div class="dc-icon">⚡</div>
+          <div class="dc-val" id="dActiveCount">—</div>
+          <div class="dc-lbl">Active Streams</div>
+        </div>
+        <div class="dash-card">
+          <div class="dc-icon">✅</div>
+          <div class="dc-val" id="dCompletedCount">—</div>
+          <div class="dc-lbl">Completed</div>
+        </div>
+        <div class="dash-card">
+          <div class="dc-icon">💸</div>
+          <div class="dc-val" id="dEarnedNow">—</div>
+          <div class="dc-lbl">Earning Right Now</div>
+        </div>
+        <div class="dash-card">
+          <div class="dc-icon">🔄</div>
+          <div class="dc-val" id="dAllStreams">—</div>
+          <div class="dc-lbl">All-time Streams</div>
+        </div>
+      </div>
+
+      <div class="dash-chart-wrap">
+        <div class="dch-title">Active Streams — Flow Rate</div>
+        <div id="dashChart"><div class="empty"><div class="ei">📊</div><div class="et">// no active streams</div></div></div>
+      </div>
+
+      <div class="dash-chart-wrap">
+        <div class="dch-title">Recent Activity</div>
+        <div id="dashActivity"><div class="empty"><div class="ei">📋</div><div class="et">// no activity yet</div></div></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="pnl" id="pnl-history">
+      <div class="sec-hd">
+        <div class="sec-title">History</div>
+        <div class="sec-actions">
+          <button class="btn-csv" onclick="exportCSV('history')">Export CSV</button>
+          <button class="btn-ghost" onclick="loadHistory()">↻ Refresh</button>
+        </div>
+      </div>
+      <div class="hist-filter">
+        <button class="hfbtn active" onclick="filterHistory('all',this)">All</button>
+        <button class="hfbtn" onclick="filterHistory('sent',this)">Sent</button>
+        <button class="hfbtn" onclick="filterHistory('received',this)">Received</button>
+        <button class="hfbtn" onclick="filterHistory('active',this)">Active</button>
+        <button class="hfbtn" onclick="filterHistory('completed',this)">Completed</button>
+        <button class="hfbtn" onclick="filterHistory('cancelled',this)">Cancelled</button>
+      </div>
+      <div id="histList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tw" id="tw"></div>
+
+<script>
+// PARTICLES
+(function(){
+  const c=document.getElementById("particles");
+  for(let i=0;i<18;i++){
+    const p=document.createElement("div");
+    p.className="particle";
+    const s=Math.random()*4+2;
+    const colors=["var(--mag)","var(--blue)","var(--acid)"];
+    p.style.cssText=`
+      width:${s}px;height:${s}px;
+      left:${Math.random()*100}%;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      animation-duration:${Math.random()*15+10}s;
+      animation-delay:${Math.random()*10}s;
+      opacity:${Math.random()*.5+.2};
+      box-shadow:0 0 ${s*3}px currentColor;
+    `;
+    c.appendChild(p);
+  }
+})();
+
+// CONFIG
+const ARC_CHAIN=5042002,ARC_RPC="https://rpc.testnet.arc.network",EXPLORER="https://testnet.arcscan.app",USDC_ADDR="0x3600000000000000000000000000000000000000";
+let STREAMPAY_ADDR="0x46937C3663101b3fE7F282A49F397d1f5C17a54B";
+
+const USDC_ABI=["function balanceOf(address) view returns (uint256)","function allowance(address,address) view returns (uint256)","function approve(address,uint256) returns (bool)"];
+const SP_ABI=["function createStream(address,uint256,uint256,string) returns (uint256)","function withdraw(uint256)","function cancel(uint256)","function topUp(uint256,uint256)","function getStream(uint256) view returns (tuple(uint256 id,address sender,address recipient,uint256 deposit,uint256 ratePerSecond,uint256 startTime,uint256 stopTime,uint256 withdrawn,string description,uint8 status))","function getSenderStreams(address) view returns (uint256[])","function getRecipientStreams(address) view returns (uint256[])","function totalStreams() view returns (uint256)","function totalStreamed() view returns (uint256)","function activeStreamCount() view returns (uint256)"];
+const STATUS=["Active","Cancelled","Completed"];
+let provider_eth,signer,account,usdcC,spC,timers={};
+
+async function connect(){
+  if(!window.ethereum)return toast("error","No Wallet","Install MetaMask.");
+  try{
+    provider_eth=new ethers.BrowserProvider(window.ethereum);
+    const accounts=await provider_eth.send("eth_requestAccounts",[]);
+    account=accounts[0];signer=await provider_eth.getSigner();
+    const net=await provider_eth.getNetwork();
+    if(Number(net.chainId)!==ARC_CHAIN){await switchChain();return;}
+    await onConnected();
+  }catch(e){toast("error","Failed",e.message);}
+}
+
+async function onConnected(){
+  document.getElementById("gate").style.display="none";
+  document.getElementById("app").style.display="block";
+  document.getElementById("ndot").className="ndot live";
+  document.getElementById("nlabel").textContent="arc_testnet";
+  document.getElementById("connBtn").textContent=short(account);
+  usdcC=new ethers.Contract(USDC_ADDR,USDC_ABI,signer);
+  const deployed=STREAMPAY_ADDR!=="0x0000000000000000000000000000000000000000";
+  if(deployed){
+    spC=new ethers.Contract(STREAMPAY_ADDR,SP_ABI,signer);
+    document.getElementById("contractDisp").innerHTML=`<a href="${EXPLORER}/address/${STREAMPAY_ADDR}" target="_blank">${short(STREAMPAY_ADDR)} ↗</a>`;
+  }
+  await refresh();
+  ["fAmount","fDuration"].forEach(id=>document.getElementById(id).addEventListener("input",updateRate));
+}
+
+async function switchChain(){
+  try{await window.ethereum.request({method:"wallet_switchEthereumChain",params:[{chainId:"0x"+ARC_CHAIN.toString(16)}]});}
+  catch(e){if(e.code===4902)await window.ethereum.request({method:"wallet_addEthereumChain",params:[{chainId:"0x"+ARC_CHAIN.toString(16),chainName:"Arc Testnet",rpcUrls:[ARC_RPC],nativeCurrency:{name:"USDC",symbol:"USDC",decimals:18},blockExplorerUrls:[EXPLORER]}]});}
+}
+
+function updateRate(){
+  const amt=parseFloat(document.getElementById("fAmount").value);
+  const dur=parseInt(document.getElementById("fDuration").value);
+  const el=document.getElementById("rateBox"),num=document.getElementById("rateNum");
+  if(!amt||!dur){el.style.display="none";return;}
+  el.style.display="block";
+  const ps=amt/dur,pm=ps*60;
+  num.textContent=ps<0.001?`$${pm.toFixed(6)} / min`:`$${ps.toFixed(8)} / sec`;
+}
+
+async function refresh(){
+  await Promise.all([loadBal(),loadStats(),loadReceiving(),loadSent()]);
+  await checkAllow();
+}
+
+async function loadBal(){
+  try{const b=await usdcC.balanceOf(account),f=(Number(b)/1e6).toFixed(2);
+    document.getElementById("stBal").textContent="$"+f;
+    document.getElementById("formBal").textContent="$"+f+" USDC";
+  }catch{}
+}
+
+async function loadStats(){
+  if(!spC)return;
+  try{const[t,v,a]=await Promise.all([spC.totalStreams(),spC.totalStreamed(),spC.activeStreamCount()]);
+    document.getElementById("stTotal").textContent=t.toString();
+    document.getElementById("stActive").textContent=a.toString();
+    document.getElementById("stVol").textContent="$"+(Number(v)/1e6).toFixed(2);
+  }catch{}
+}
+
+async function checkAllow(){
+  if(!spC)return;
+  try{const al=await usdcC.allowance(account,STREAMPAY_ADDR),ok=al>0n;
+    document.getElementById("allowSt").textContent=ok?"✓ Approved":"Needs approval";
+    document.getElementById("allowSt").className=ok?"aok":"apend";
+    document.getElementById("approveWrap").style.display=ok?"none":"block";
+  }catch{}
+}
+
+async function loadSData(id){
+  const s=await spC.getStream(Number(id));
+  return{id:Number(s.id),sender:s.sender,recipient:s.recipient,deposit:Number(s.deposit),ratePerSecond:Number(s.ratePerSecond),startTime:Number(s.startTime),stopTime:Number(s.stopTime),withdrawn:Number(s.withdrawn),description:s.description,status:Number(s.status)};
+}
+
+async function loadReceiving(){
+  if(!spC)return;
+  try{const ids=await spC.getRecipientStreams(account);
+    renderList("recList",await Promise.all(ids.map(id=>loadSData(Number(id)))),"recipient");
+  }catch(e){console.error(e)}
+}
+
+async function loadSent(){
+  if(!spC)return;
+  try{const ids=await spC.getSenderStreams(account);
+    renderList("sentList",await Promise.all(ids.map(id=>loadSData(Number(id)))),"sender");
+  }catch(e){console.error(e)}
+}
+
+function renderList(elId,streams,role){
+  const el=document.getElementById(elId);
+  Object.values(timers).forEach(clearInterval);timers={};
+  if(!streams.length){
+    el.innerHTML=`<div class="empty"><div class="ei">${role==="recipient"?"📡":"📤"}</div><div class="et">// no streams found</div></div>`;
+    return;
+  }
+  el.innerHTML=[...streams].reverse().map(s=>{
+    const dur=s.stopTime-s.startTime,rateHr=(s.deposit/dur*3600/1e6).toFixed(4);
+    const amtFmt=(s.deposit/1e6).toFixed(2),isActive=s.status===0;
+    const peer=role==="recipient"?s.sender:s.recipient;
+    const peerLabel=role==="recipient"?"from":"to";
+    const d1=new Date(s.startTime*1000).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});
+    const d2=new Date(s.stopTime*1000).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});
+    let actions="";
+    if(isActive&&role==="recipient")actions+=`<button class="btn-acid" onclick="doWithdraw(${s.id})">Withdraw Earned</button>`;
+    if(isActive&&role==="sender"){
+      actions+=`<button class="btn-red" onclick="doCancel(${s.id})">Cancel Stream</button>`;
+      actions+=`<div class="topup-row"><input class="fi" id="tu-${s.id}" placeholder="Top-up amount (USDC)..." type="number" min="1"><button class="btn-ghost" onclick="doTopUp(${s.id})">Top Up →</button></div>`;
+    }
+    return`
+    <div class="stream-card ${isActive?"active":""}">
+      <div class="sc-top">
+        <div>
+          <div class="sc-id">stream #${s.id} · ${d1} → ${d2}</div>
+          <div class="sc-name">${esc(s.description)||"Unnamed Stream"}</div>
+          <div class="sc-peer">${peerLabel} ${short(peer)} · $${rateHr}/hr</div>
+        </div>
+        <div class="sc-right">
+          <div class="sc-amt-lbl">Total deposit</div>
+          <div class="sc-amt">$${amtFmt}</div>
+          <span class="badge ${STATUS[s.status].toLowerCase()}">${STATUS[s.status]}</span>
+        </div>
+      </div>
+      ${isActive?`
+      <div class="live">
+        <div class="live-tag"><span class="lpulse"></span>${role==="recipient"?"EARNED SO FAR":"STREAMED SO FAR"}</div>
+        <div class="live-num" id="lc-${s.id}">$0.000000<span class="live-unit"> USDC</span></div>
+        <div class="live-sub" id="lsub-${s.id}">calculating...</div>
+      </div>`:`
+      <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--ink3);padding:8px 0 14px">
+        // total_withdrawn: $${(s.withdrawn/1e6).toFixed(6)} USDC
+      </div>`}
+      <div class="prog">
+        <div class="prog-labels"><span>0%</span><span id="pct-${s.id}">0%</span><span>100%</span></div>
+        <div class="prog-track"><div class="prog-fill" id="pb-${s.id}" style="width:0%"></div></div>
+      </div>
+      <div style="margin-bottom:${actions?"6":"0"}px">
+        <a class="expl" href="${EXPLORER}/address/${STREAMPAY_ADDR}" target="_blank">view on explorer ↗</a>
+      </div>
+      ${actions?`<div class="sc-actions">${actions}</div>`:""}
+    </div>`;
+  }).join("");
+  streams.filter(s=>s.status===0).forEach(s=>startTimer(s));
+}
+
+function startTimer(s){
+  const dur=s.stopTime-s.startTime,rate=s.deposit/dur;
+  function tick(){
+    const now=Date.now()/1000;
+    const lc=document.getElementById(`lc-${s.id}`),pb=document.getElementById(`pb-${s.id}`),pct=document.getElementById(`pct-${s.id}`),lsub=document.getElementById(`lsub-${s.id}`);
+    if(!lc){clearInterval(timers[s.id]);return;}
+    const elapsed=Math.max(0,Math.min(dur,now-s.startTime));
+    const earned=Math.min(s.deposit,rate*elapsed);
+    const avail=Math.max(0,earned-s.withdrawn);
+    const prog=Math.min(100,(elapsed/dur)*100);
+    lc.innerHTML=`$${(avail/1e6).toFixed(6)}<span class="live-unit"> USDC</span>`;
+    if(pb)pb.style.width=prog.toFixed(4)+"%";
+    if(pct)pct.textContent=prog.toFixed(1)+"%";
+    if(lsub){const rem=Math.max(0,s.stopTime-now),h=Math.floor(rem/3600),m=Math.floor((rem%3600)/60),sec=Math.floor(rem%60);lsub.textContent=rem>0?`// ${h}h ${m}m ${sec}s remaining`:"// stream complete";}
+  }
+  tick();timers[s.id]=setInterval(tick,100);
+}
+
+async function approve(){
+  try{setLoad("approveBtn",true);
+    const tx=await usdcC.approve(STREAMPAY_ADDR,ethers.MaxUint256);
+    toast("info","Approving...","");await tx.wait();
+    toast("success","Approved","USDC spending approved.");await checkAllow();
+  }catch(e){toast("error","Failed",e.reason||e.message);}finally{setLoad("approveBtn",false);}
+}
+
+async function createStream(){
+  const rec=document.getElementById("fRecipient").value.trim();
+  const amt=parseFloat(document.getElementById("fAmount").value);
+  const dur=parseInt(document.getElementById("fDuration").value);
+  const desc=document.getElementById("fDesc").value.trim();
+  if(!ethers.isAddress(rec))return toast("error","Invalid Address","");
+  if(!amt||amt<1)return toast("error","Invalid Amount","Min 1 USDC");
+  const raw=BigInt(Math.round(amt*1e6));
+  try{setLoad("createBtn",true);
+    const tx=await spC.createStream(rec,raw,BigInt(dur),desc);
+    toast("info","Creating stream...","Arc finalizing...");await tx.wait();
+    toast("success","Stream Active!","USDC is now flowing.");
+    document.getElementById("fRecipient").value="";
+    document.getElementById("fAmount").value="";
+    document.getElementById("fDesc").value="";
+    document.getElementById("rateBox").style.display="none";
+    await refresh();switchTab("sent");
+  }catch(e){toast("error","Failed",e.reason||e.shortMessage||e.message);}finally{setLoad("createBtn",false);}
+}
+
+async function doWithdraw(id){
+  try{const tx=await spC.withdraw(id);toast("info","Withdrawing...","");await tx.wait();toast("success","Withdrawn","USDC sent.");await refresh();}catch(e){toast("error","Failed",e.reason||e.shortMessage||e.message);}
+}
+async function doCancel(id){
+  try{const tx=await spC.cancel(id);toast("info","Cancelling...","");await tx.wait();toast("success","Cancelled","");await refresh();}catch(e){toast("error","Failed",e.reason||e.shortMessage||e.message);}
+}
+async function doTopUp(id){
+  const val=parseFloat(document.getElementById(`tu-${id}`)?.value||"0");
+  if(!val||val<1)return toast("error","Invalid","Min 1 USDC");
+  const raw=BigInt(Math.round(val*1e6));
+  try{const tx=await spC.topUp(id,raw);toast("info","Topping up...","");await tx.wait();toast("success","Extended","");await refresh();}catch(e){toast("error","Failed",e.reason||e.shortMessage||e.message);}
+}
+
+function toggleHowCard(el){
+  const wasOpen=el.classList.contains("open");
+  document.querySelectorAll(".how-card").forEach(c=>c.classList.remove("open"));
+  if(!wasOpen)el.classList.add("open");
+}
+
+function toggleStep(el){
+  const wasOpen=el.classList.contains("open");
+  document.querySelectorAll(".step-acc").forEach(s=>s.classList.remove("open"));
+  if(!wasOpen)el.classList.add("open");
+}
+
+function switchTab(t){
+  const tabs=["send","receiving","sent","dashboard","history"];
+  document.querySelectorAll(".tab").forEach((el,i)=>el.classList.toggle("active",tabs[i]===t));
+  document.querySelectorAll(".pnl").forEach((el,i)=>el.classList.toggle("active",tabs[i]===t));
+  if(t==="receiving")loadReceiving();
+  if(t==="sent")loadSent();
+  if(t==="dashboard")loadDashboard();
+  if(t==="history")loadHistory();
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+let allSentStreams=[], allRecStreams=[];
+
+async function loadDashboard(){
+  if(!spC)return;
+  try{
+    const [sIds,rIds]=await Promise.all([
+      spC.getSenderStreams(account),
+      spC.getRecipientStreams(account)
+    ]);
+    allSentStreams=await Promise.all(sIds.map(id=>loadSData(Number(id))));
+    allRecStreams=await Promise.all(rIds.map(id=>loadSData(Number(id))));
+
+    const allS=[...allSentStreams,...allRecStreams];
+    const totalSent=allSentStreams.reduce((a,s)=>a+s.deposit,0);
+    const totalRec=allRecStreams.reduce((a,s)=>a+s.deposit,0);
+    const active=allS.filter(s=>s.status===0);
+    const completed=allS.filter(s=>s.status===2);
+
+    // Live earning right now (recipient streams)
+    const earnNow=allRecStreams
+      .filter(s=>s.status===0)
+      .reduce((a,s)=>{
+        const dur=s.stopTime-s.startTime;
+        const rate=s.deposit/dur;
+        const elapsed=Math.max(0,Math.min(dur,Date.now()/1000-s.startTime));
+        return a+Math.min(s.deposit,rate*elapsed)-s.withdrawn;
+      },0);
+
+    document.getElementById("dTotalSent").textContent="$"+(totalSent/1e6).toFixed(2);
+    document.getElementById("dTotalRec").textContent="$"+(totalRec/1e6).toFixed(2);
+    document.getElementById("dActiveCount").textContent=active.length;
+    document.getElementById("dCompletedCount").textContent=completed.length;
+    document.getElementById("dEarnedNow").textContent="$"+(earnNow/1e6).toFixed(4);
+    document.getElementById("dAllStreams").textContent=allS.length;
+
+    renderDashChart(active);
+    renderDashActivity(allS);
+  }catch(e){console.error(e)}
+}
+
+function renderDashChart(active){
+  const el=document.getElementById("dashChart");
+  if(!active.length){
+    el.innerHTML=`<div class="empty"><div class="ei">📊</div><div class="et">// no active streams</div></div>`;
+    return;
+  }
+  const maxRate=Math.max(...active.map(s=>{
+    const dur=s.stopTime-s.startTime;
+    return s.deposit/dur*3600/1e6;
+  }));
+  el.innerHTML=active.map(s=>{
+    const dur=s.stopTime-s.startTime;
+    const rateHr=(s.deposit/dur*3600/1e6).toFixed(4);
+    const pct=Math.min(100,(parseFloat(rateHr)/maxRate)*100);
+    const name=esc(s.description)||`Stream #${s.id}`;
+    const role=s.sender.toLowerCase()===account.toLowerCase()?"OUT":"IN";
+    const roleColor=role==="IN"?"var(--acid)":"var(--mag)";
+    return`<div class="mini-bar-row">
+      <div class="mini-bar-lbl" title="${name}">[${role}] ${name}</div>
+      <div class="mini-bar-track">
+        <div class="mini-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,${roleColor},var(--blue))"></div>
+      </div>
+      <div class="mini-bar-val" style="color:${roleColor}">$${rateHr}/hr</div>
+    </div>`;
+  }).join("");
+}
+
+function renderDashActivity(all){
+  const el=document.getElementById("dashActivity");
+  if(!all.length){
+    el.innerHTML=`<div class="empty"><div class="ei">📋</div><div class="et">// no activity yet</div></div>`;
+    return;
+  }
+  const sorted=[...all].sort((a,b)=>b.startTime-a.startTime).slice(0,8);
+  const STATUS_ICONS=["⚡","❌","✅"];
+  el.innerHTML=sorted.map(s=>{
+    const isSender=s.sender.toLowerCase()===account.toLowerCase();
+    const date=new Date(s.startTime*1000).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});
+    const amt=(s.deposit/1e6).toFixed(2);
+    const peer=isSender?s.recipient:s.sender;
+    return`<div class="hist-card">
+      <div class="hist-icon">${STATUS_ICONS[s.status]}</div>
+      <div class="hist-main">
+        <div class="hist-name">${esc(s.description)||"Unnamed Stream"} #${s.id}</div>
+        <div class="hist-meta">${isSender?"OUT →":"IN ←"} ${short(peer)} · ${["Active","Cancelled","Completed"][s.status]}</div>
+      </div>
+      <div class="hist-right">
+        <div class="hist-amt" style="color:${isSender?"var(--mag)":"var(--acid)"}">
+          ${isSender?"-":"+"}&dollar;${amt}
+        </div>
+        <div class="hist-date">${date}</div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────────────────────
+let allHistoryData=[], currentHistFilter="all";
+
+async function loadHistory(){
+  if(!spC)return;
+  try{
+    const [sIds,rIds]=await Promise.all([
+      spC.getSenderStreams(account),
+      spC.getRecipientStreams(account)
+    ]);
+    const sent=await Promise.all(sIds.map(id=>loadSData(Number(id)).then(s=>({...s,role:"sent"}))));
+    const rec=await Promise.all(rIds.map(id=>loadSData(Number(id)).then(s=>({...s,role:"received"}))));
+    allHistoryData=[...sent,...rec].sort((a,b)=>b.startTime-a.startTime);
+    renderHistory();
+  }catch(e){console.error(e)}
+}
+
+function filterHistory(filter,btn){
+  currentHistFilter=filter;
+  document.querySelectorAll(".hfbtn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  renderHistory();
+}
+
+function renderHistory(){
+  const el=document.getElementById("histList");
+  let data=allHistoryData;
+  if(currentHistFilter==="sent")     data=data.filter(s=>s.role==="sent");
+  if(currentHistFilter==="received") data=data.filter(s=>s.role==="received");
+  if(currentHistFilter==="active")   data=data.filter(s=>s.status===0);
+  if(currentHistFilter==="completed")data=data.filter(s=>s.status===2);
+  if(currentHistFilter==="cancelled")data=data.filter(s=>s.status===1);
+
+  if(!data.length){
+    el.innerHTML=`<div class="empty"><div class="ei">📭</div><div class="et">// no streams matching filter</div></div>`;
+    return;
+  }
+
+  const STATUS_LABEL=["Active","Cancelled","Completed"];
+  const STATUS_COLOR=["var(--mag)","var(--ink3)","var(--acid)"];
+
+  el.innerHTML=data.map(s=>{
+    const isSent=s.role==="sent";
+    const peer=isSent?s.recipient:s.sender;
+    const amt=(s.deposit/1e6).toFixed(2);
+    const withdrawn=(s.withdrawn/1e6).toFixed(4);
+    const dur=s.stopTime-s.startTime;
+    const rateHr=(s.deposit/dur*3600/1e6).toFixed(4);
+    const d1=new Date(s.startTime*1000).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});
+    const d2=new Date(s.stopTime*1000).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"2-digit"});
+    const progress=Math.min(100,Math.max(0,(Date.now()/1000-s.startTime)/(s.stopTime-s.startTime)*100));
+
+    return`<div class="hist-card" style="flex-direction:column;align-items:stretch;gap:10px">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="font-size:20px;opacity:.7">${isSent?"📤":"📡"}</div>
+        <div style="flex:1;min-width:0">
+          <div class="hist-name">${esc(s.description)||"Unnamed Stream"}</div>
+          <div class="hist-meta">
+            #${s.id} · ${isSent?"to":"from"} ${short(peer)} · $${rateHr}/hr · ${d1} → ${d2}
+          </div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:${isSent?"var(--mag)":"var(--acid)"}">
+            ${isSent?"-":"+"}&dollar;${amt}
+          </div>
+          <span class="badge ${STATUS_LABEL[s.status].toLowerCase()}">${STATUS_LABEL[s.status]}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="flex:1;height:3px;background:var(--space3);border-radius:2px;overflow:hidden">
+          <div style="height:100%;width:${progress.toFixed(1)}%;background:linear-gradient(90deg,${STATUS_COLOR[s.status]},var(--blue));border-radius:2px"></div>
+        </div>
+        <div style="font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--ink4)">
+          withdrawn: $${withdrawn}
+        </div>
+        <a class="expl" href="${EXPLORER}/address/${STREAMPAY_ADDR}" target="_blank">explorer ↗</a>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ─── CSV EXPORT ───────────────────────────────────────────────────────────────
+async function exportCSV(type){
+  if(!spC)return toast("error","Not Connected","Connect wallet first.");
+  try{
+    let data=[];
+    if(type==="receiving"||type==="history"){
+      const ids=await spC.getRecipientStreams(account);
+      const rec=await Promise.all(ids.map(id=>loadSData(Number(id))));
+      rec.forEach(s=>data.push({...s,role:"received"}));
+    }
+    if(type==="sent"||type==="history"){
+      const ids=await spC.getSenderStreams(account);
+      const sent=await Promise.all(ids.map(id=>loadSData(Number(id))));
+      sent.forEach(s=>data.push({...s,role:"sent"}));
+    }
+    if(!data.length)return toast("info","No Data","No streams to export.");
+
+    const STATUS=["Active","Cancelled","Completed"];
+    const headers=["Stream ID","Role","Description","Sender","Recipient","Deposit (USDC)","Rate (USDC/hr)","Withdrawn (USDC)","Status","Start Date","End Date","Duration (days)"];
+    const rows=data.map(s=>{
+      const dur=(s.stopTime-s.startTime);
+      const rateHr=(s.deposit/dur*3600/1e6).toFixed(6);
+      const days=(dur/86400).toFixed(1);
+      const d1=new Date(s.startTime*1000).toISOString().split("T")[0];
+      const d2=new Date(s.stopTime*1000).toISOString().split("T")[0];
+      return[
+        s.id, s.role,
+        `"${(s.description||"").replace(/"/g,'""')}"`,
+        s.sender, s.recipient,
+        (s.deposit/1e6).toFixed(6),
+        rateHr,
+        (s.withdrawn/1e6).toFixed(6),
+        STATUS[s.status],
+        d1, d2, days
+      ].join(",");
+    });
+
+    const csv=[headers.join(","),...rows].join("\n");
+    const blob=new Blob([csv],{type:"text/csv"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=url;
+    a.download=`streampay_${type}_${account.slice(0,6)}_${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast("success","CSV Exported",`${data.length} streams exported.`);
+  }catch(e){toast("error","Export Failed",e.message);}
+}
+
+function toast(type,title,body){
+  const w=document.getElementById("tw"),el=document.createElement("div");
+  el.className=`toast ${type}`;
+  el.innerHTML=`<div class="t-t">${title}</div><div class="t-b">${body}</div>`;
+  w.appendChild(el);setTimeout(()=>el.remove(),5000);
+}
+
+function setLoad(id,l){
+  const b=document.getElementById(id);if(!b)return;
+  b.disabled=l;
+  if(l){b.dataset.o=b.innerHTML;b.innerHTML=`<span class="spin"></span> Processing...`;}
+  else b.innerHTML=b.dataset.o;
+}
+
+function short(a){return a?a.slice(0,6)+"..."+a.slice(-4):"—"}
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+
+if(window.ethereum){
+  window.ethereum.on("accountsChanged",([a])=>{if(a){account=a;refresh();}});
+  window.ethereum.on("chainChanged",()=>location.reload());
+  window.ethereum.request({method:"eth_accounts"}).then(async accs=>{
+    if(accs.length){
+      provider_eth=new ethers.BrowserProvider(window.ethereum);
+      const net=await provider_eth.getNetwork();
+      if(Number(net.chainId)===ARC_CHAIN){account=accs[0];signer=await provider_eth.getSigner();await onConnected();}
+    }
+  });
+}
+</script>
+</body>
+</html>
